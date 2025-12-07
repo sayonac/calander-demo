@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
+// import { RootState, AppDispatch } from "../store"; 
+// import { setSelectedDate, setSelectedData, setShowPopup } from "../store/calendarSlice";
+
 import {
   Calendar,
   dateFnsLocalizer,
   Event as RBCEvent,
-} from "react-big-calendar";
+} from "react-big-calendar";  
 import { format } from "date-fns/format";
 import { parse } from "date-fns/parse";
 import { startOfWeek } from "date-fns/startOfWeek";
@@ -22,8 +25,9 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import { RootState } from "./store";
+import { setSelectedData, setSelectedDate, setShowPopup } from "./store/calendarSlice";
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
-
 
 const locales = { "en-US": enUS };
 const localizer = dateFnsLocalizer({
@@ -74,9 +78,10 @@ const events: RBCEvent[] = Object.keys(dummyData).map((key) => {
 });
 
 export default function Home() {
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-
-
+  const dispatch = useDispatch()
+  const selectedDate = useSelector((state: RootState) => state.calendar.selectedDate);
+  const selectedData = useSelector((state: RootState) => state.calendar.selectedData);
+  const showPopup = useSelector((state: RootState) => state.calendar.showPopup);
 
   const formatKey = (date: Date) =>
     `${String(date.getDate()).padStart(2, "0")}-${String(
@@ -85,18 +90,38 @@ export default function Home() {
 
   const handleSelectSlot = (slotInfo: any) => {
     const clickedDate = slotInfo.start;
-  
+    const key = formatKey(clickedDate);
 
-    setSelectedDate(clickedDate);
+    dispatch(setSelectedDate(clickedDate.toISOString()));
 
+    if (dummyData[key]) {
+      dispatch(setSelectedData(dummyData[key]));
+    } else {
+      dispatch(setSelectedData(null));
+    }
+
+    dispatch(setShowPopup(true));
   };
 
+  const chartData = selectedData
+    ? {
+        labels: selectedData.map((obj) => Object.keys(obj)[0]),
+        datasets: [
+          {
+            label: "User Data",
+            data: selectedData.map((obj) => Object.values(obj)[0]),
+            backgroundColor: "rgba(228, 132, 54, 0.6)",
+          },
+        ],
+      }
+    : null;
 
+    const selectedDateObj = selectedDate ? new Date(selectedDate) : null;
 
   return (
     <div style={{ padding: "20px" }}>
       <h1 style={{ marginBottom: "20px", fontSize: "28px" }}>
-        React Big Calendar
+        React Big Calendar – Demo
       </h1>
 
       <Calendar
@@ -118,7 +143,7 @@ export default function Home() {
 
           const isSelected =
             selectedDate &&
-            date.toDateString() === selectedDate.toDateString();
+            date.toDateString() === selectedDate.toString();
 
           const hasData = dummyData[key];
 
@@ -127,14 +152,62 @@ export default function Home() {
               backgroundColor: isSelected
                 ? "#ffe5b4"
                 : hasData
-                  ? "#d4f7d4"
-                  : undefined,
+                ? "#d4f7d4"
+                : undefined,
               borderRadius: isSelected ? "6px" : undefined,
             },
           };
         }}
       />
 
+      {showPopup && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            background: "rgba(0, 0, 0, 0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              width: "400px",
+              background: "#fff",
+              padding: "20px",
+              borderRadius: "10px",
+            }}
+          >
+            <h2>{selectedDateObj?.toDateString()}</h2>
+
+            {selectedData ? (
+              <Bar data={chartData!} />
+            ) : (
+              <p style={{ color: "red", fontWeight: "bold" }}>
+                No data found for {selectedDate?.toString()}
+              </p>
+            )}
+
+            <button
+              onClick={() => dispatch(setShowPopup(false))}
+              style={{
+                marginTop: "15px",
+                padding: "8px 15px",
+                background: "#444",
+                color: "#fff",
+                borderRadius: "5px",
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
