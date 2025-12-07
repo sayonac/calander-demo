@@ -96,7 +96,7 @@ export default function Home() {
   return (
     <div style={{ padding: "20px" }}>
       <h1 style={{ marginBottom: "20px", fontSize: "28px" }}>
-        React Big Calendar – Demo
+        React Big Calendar
       </h1>
 
       <Calendar
